@@ -1,17 +1,15 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
+import { useEffect, useState } from "react";
 import {
   FlatList,
   Image,
   StyleSheet,
   Text,
+  ToastAndroid,
   TouchableOpacity,
   View,
 } from "react-native";
-
-const user = {
-  name: "admin1",
-  coin: 300,
-};
 
 const features = [
   {
@@ -19,39 +17,99 @@ const features = [
     label: "Nhận quà",
     icon: require("../assets/images/ic_gift.png"),
     screen: "gift",
+    requiresAuth: false, // Không yêu cầu đăng nhập
   },
   {
     key: "earn",
     label: "Kiếm tiền",
     icon: require("../assets/images/ic_earning.png"),
     screen: "earn-money",
+    requiresAuth: true, // Yêu cầu đăng nhập
   },
   {
     key: "profile",
     label: "Thông tin cá nhân",
     icon: require("../assets/images/profile.png"),
     screen: "account",
+    requiresAuth: true, // Yêu cầu đăng nhập
   },
   {
     key: "loan",
     label: "Nhận khoản vay",
     icon: require("../assets/images/ic_loan.png"),
     screen: "loan",
+    requiresAuth: false, // Không yêu cầu đăng nhập
   },
   {
     key: "withdraw",
     label: "Rút tiền",
     icon: require("../assets/images/ic_wallet.png"),
     screen: "withdraw",
+    requiresAuth: true, // Yêu cầu đăng nhập
   },
   {
     key: "logout",
     label: "Đăng xuất",
-    icon: require("../assets/images/ic_earning.png"),
-    screen: "gift",
+    icon: require("../assets/images/ic_logout.png"),
+    screen: "sign-in",
+    requiresAuth: true, // Chỉ hiển thị khi đã đăng nhập
+  },
+  {
+    key: "login",
+    label: "Đăng nhập",
+    icon: require("../assets/images/ic_logout.png"), // Giả định có icon đăng nhập
+    screen: "sign-in",
+    requiresAuth: false, // Chỉ hiển thị khi chưa đăng nhập
   },
 ];
+
 export default function HomeScreen() {
+  const [userData, setUserData] = useState(null);
+
+  // Kiểm tra trạng thái đăng nhập
+  useEffect(() => {
+    const checkUserData = async () => {
+      try {
+        const storedData = await AsyncStorage.getItem("userData");
+        if (storedData) {
+          setUserData(JSON.parse(storedData));
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    };
+    checkUserData();
+  }, []);
+
+  // Xử lý điều hướng và đăng xuất
+  const handleNavigation = async (item) => {
+    if (item.key === "logout") {
+      try {
+        await AsyncStorage.removeItem("userData");
+        setUserData(null);
+        ToastAndroid.show("Đăng xuất thành công.", ToastAndroid.SHORT);
+        router.push("/sign-in");
+      } catch (error) {
+        ToastAndroid.show("Lỗi khi đăng xuất.", ToastAndroid.SHORT);
+        console.error(error);
+      }
+      return;
+    }
+
+    if (!userData) {
+      ToastAndroid.show("Vui lòng đăng nhập.", ToastAndroid.SHORT);
+      router.push("/sign-in");
+      return;
+    }
+
+    router.push(`/${item.screen}`);
+  };
+
+  // Lọc danh sách tính năng dựa trên trạng thái đăng nhập
+  const filteredFeatures = features.filter((item) =>
+    item.key === "logout" ? userData : item.key === "login" ? !userData : true
+  );
+
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -61,9 +119,15 @@ export default function HomeScreen() {
           style={styles.avatar}
         />
         <View style={{ flex: 1, marginLeft: 12 }}>
-          <Text style={styles.name}>{user.name}</Text>
+          <Text style={styles.name}>
+            {userData
+              ? userData.fullname || "Chưa đăng nhập"
+              : "Chưa đăng nhập"}
+          </Text>
         </View>
-        <Text style={styles.coin}>{user.coin}</Text>
+        <Text style={styles.coin}>
+          {userData ? (userData.coin === 0 ? "0" : userData.coin ?? 0) : 0}
+        </Text>
         <Image
           source={require("../assets/images/ic_coin.png")}
           style={styles.coinIcon}
@@ -73,13 +137,13 @@ export default function HomeScreen() {
       {/* Grid */}
       <View style={styles.gridContainer}>
         <FlatList
-          data={features}
+          data={filteredFeatures}
           numColumns={2}
           keyExtractor={(item) => item.key}
           renderItem={({ item }) => (
             <TouchableOpacity
               style={styles.gridItem}
-              onPress={() => router.push(`/${item.screen}`)}
+              onPress={() => handleNavigation(item)}
             >
               <Image source={item.icon} style={styles.gridIcon} />
               <Text style={styles.gridLabel}>{item.label}</Text>

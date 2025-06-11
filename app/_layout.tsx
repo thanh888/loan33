@@ -23,7 +23,7 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-        <Stack initialRouteName="loading">
+        <Stack initialRouteName="home">
           <Stack.Screen name="loading" options={{ headerShown: false }} />
           <Stack.Screen name="home" options={{ headerShown: false }} />
           <Stack.Screen
@@ -34,6 +34,8 @@ export default function RootLayout() {
           <Stack.Screen name="gift" options={{ title: "Lác xu nhận thưởng" }} />
           <Stack.Screen name="loan" options={{ title: "Nhận khoản vay" }} />
           <Stack.Screen name="withdraw" options={{ title: "Rút tiền" }} />
+          <Stack.Screen name="sign-in" options={{ headerShown: false }} />
+          <Stack.Screen name="sign-up" options={{ headerShown: false }} />
           <Stack.Screen name="+not-found" />
         </Stack>
         <StatusBar style="auto" />

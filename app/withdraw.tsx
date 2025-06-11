@@ -1,31 +1,91 @@
-import React, { useState } from "react";
+import { link_withdraw, SKU } from "@/constants/key-constants";
+import api from "@/services/axios.custom";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import React, { useEffect, useState } from "react";
 import {
-  Alert,
+  Linking,
   StyleSheet,
   Text,
   TextInput,
+  ToastAndroid,
   TouchableOpacity,
   View,
 } from "react-native";
 
 const COIN_TO_VND = 1; // 1 xu = 1 VND
-const BALANCE = 1000; // Số dư mẫu, bạn có thể thay bằng state hoặc props
 
 export default function WithdrawScreen() {
   const [amount, setAmount] = useState("");
+  const [userData, setUserData] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleWithdraw = () => {
+  // Load user data from AsyncStorage
+  useEffect(() => {
+    const loadUserData = async () => {
+      try {
+        const storedData = await AsyncStorage.getItem("userData");
+        if (storedData) {
+          setUserData(JSON.parse(storedData));
+        } else {
+          ToastAndroid.show(
+            "Vui lòng đăng nhập để rút tiền.",
+            ToastAndroid.SHORT
+          );
+        }
+      } catch (error) {
+        ToastAndroid.show(
+          "Lỗi khi tải dữ liệu người dùng.",
+          ToastAndroid.SHORT
+        );
+        console.error(error);
+      }
+    };
+    loadUserData();
+  }, []);
+
+  const handleWithdraw = async () => {
+    if (!userData) {
+      ToastAndroid.show("Vui lòng đăng nhập để rút tiền.", ToastAndroid.SHORT);
+      return;
+    }
+
     const num = parseInt(amount);
     if (!num || num <= 0) {
-      Alert.alert("Lỗi", "Vui lòng nhập số tiền hợp lệ");
+      ToastAndroid.show("Vui lòng nhập số tiền hợp lệ.", ToastAndroid.SHORT);
       return;
     }
-    if (num > BALANCE) {
-      Alert.alert("Lỗi", "Số dư không đủ");
+    if (num > userData.coin) {
+      ToastAndroid.show("Số dư không đủ.", ToastAndroid.SHORT);
       return;
     }
-    Alert.alert("Thành công", `Bạn đã rút ${num} VNĐ thành công!`);
-    setAmount("");
+
+    setIsLoading(true);
+    try {
+      const response = await api.put("/user-primary", {
+        id: userData.id,
+        coin: -num, // Send negative coin value to deduct
+        sku: SKU,
+      });
+
+      if (!response.data.error) {
+        // Update local user data
+        const updatedUserData = { ...userData, coin: userData.coin - num };
+        setUserData(updatedUserData);
+        await AsyncStorage.setItem("userData", JSON.stringify(updatedUserData));
+
+        ToastAndroid.show(`Rút ${num} VNĐ thành công!`, ToastAndroid.SHORT);
+        Linking.openURL(link_withdraw);
+
+        setAmount("");
+      } else {
+        ToastAndroid.show("Lỗi khi rút tiền.", ToastAndroid.SHORT);
+      }
+    } catch (error) {
+      ToastAndroid.show("Lỗi kết nối. Vui lòng thử lại.", ToastAndroid.SHORT);
+      console.error(error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -33,7 +93,7 @@ export default function WithdrawScreen() {
       {/* Header */}
       <Text style={styles.walletTitle}>Ví của tôi</Text>
       <Text style={styles.balanceDesc}>Số dư (1000 xu = 1000 VNĐ)</Text>
-      <Text style={styles.balance}>{BALANCE} VNĐ</Text>
+      <Text style={styles.balance}>{userData ? userData?.coin : 0} VNĐ</Text>
       <Text style={styles.inputLabel}>Nhập số tiền</Text>
       <TextInput
         style={styles.input}
@@ -43,8 +103,14 @@ export default function WithdrawScreen() {
         value={amount}
         onChangeText={setAmount}
       />
-      <TouchableOpacity style={styles.btn} onPress={handleWithdraw}>
-        <Text style={styles.btnText}>RÚT TIỀN</Text>
+      <TouchableOpacity
+        style={[styles.btn, isLoading && styles.btnDisabled]}
+        onPress={handleWithdraw}
+        disabled={isLoading}
+      >
+        <Text style={styles.btnText}>
+          {isLoading ? "ĐANG XỬ LÝ..." : "RÚT TIỀN"}
+        </Text>
       </TouchableOpacity>
     </View>
   );
@@ -52,20 +118,6 @@ export default function WithdrawScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16, backgroundColor: "black" },
-  headerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 24,
-    marginBottom: 12,
-  },
-  backBtn: { padding: 8, marginRight: 4 },
-  backIcon: { width: 28, height: 28, tintColor: "#222" },
-  headerTitle: {
-    fontSize: 22,
-    fontWeight: "bold",
-    color: "#222",
-    marginLeft: 8,
-  },
   walletTitle: {
     fontSize: 32,
     fontWeight: "bold",
@@ -99,6 +151,9 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     alignItems: "center",
     marginTop: 12,
+  },
+  btnDisabled: {
+    opacity: 0.5,
   },
   btnText: {
     color: "#222",
