@@ -41,11 +41,16 @@
           "buildType": "app-bundle"
         }
       },
-      "apk": {
+      "preview": {
         "android": {
           "buildType": "apk"
         }
       }
+    },
+    "splash": {
+      "image": "./assets/images/logo.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
     }
   }
 }

@@ -1,5 +1,6 @@
 import { SKU } from "@/constants/key-constants";
 import api from "@/services/axios.custom";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
@@ -40,8 +41,14 @@ const SignUpScreen = () => {
       });
 
       if (!response.data.error) {
+        // ✅ Lưu username và password vào AsyncStorage
+        await AsyncStorage.setItem(
+          "tempCredentials",
+          JSON.stringify({ username, password })
+        );
+
         ToastAndroid.show("Đăng ký thành công!", ToastAndroid.SHORT);
-        router.replace("/sign-in"); // Chuyển về màn hình Sign In sau khi đăng ký thành công
+        router.replace("/sign-in");
       } else {
         ToastAndroid.show("Đăng ký thất bại", ToastAndroid.SHORT);
       }

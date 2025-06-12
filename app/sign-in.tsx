@@ -2,7 +2,7 @@ import { SKU } from "@/constants/key-constants";
 import api from "@/services/axios.custom";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Alert,
   StyleSheet,
@@ -17,6 +17,20 @@ const SignInScreen = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const router = useRouter();
+
+  // ✅ Tự động điền username & password nếu có lưu
+  useEffect(() => {
+    const loadTempCredentials = async () => {
+      const data = await AsyncStorage.getItem("tempCredentials");
+      if (data) {
+        const { username, password } = JSON.parse(data);
+        setUsername(username);
+        setPassword(password);
+      }
+    };
+
+    loadTempCredentials();
+  }, []);
 
   const handleSignIn = async () => {
     if (!username || !password) {

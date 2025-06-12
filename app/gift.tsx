@@ -10,105 +10,91 @@ import {
   StyleSheet,
   Text,
   ToastAndroid,
+  Vibration,
   View,
 } from "react-native";
 
 const COIN_REWARD = 300;
+const SHAKE_THRESHOLD = 1.7;
+const MIN_SHAKE_DURATION = 3000; // lắc ít nhất 3s
+const MIN_TIME_BETWEEN_REWARDS = 10000; // cách nhau 10s
 
 export default function GiftScreen() {
   const [shaking, setShaking] = useState(false);
-  const [userData, setUserData] = useState(null);
-  const shakeStart = useRef<number | null>(null);
-  const [subscription, setSubscription] = useState<any>(null);
+  const [userData, setUserData] = useState<any>(null);
+  const [loadingReward, setLoadingReward] = useState(false);
   const rotateAnim = useRef(new Animated.Value(0)).current;
 
-  // Load user data and setup accelerometer
+  const shakeStartTime = useRef<number | null>(null);
+  const lastRewardTime = useRef<number>(0);
+
   useEffect(() => {
-    const initialize = async () => {
-      try {
-        const storedData = await AsyncStorage.getItem("userData");
-        if (storedData) {
-          setUserData(JSON.parse(storedData));
-        }
-      } catch (error) {
-        ToastAndroid.show("Lỗi khi tải dữ liệu.", ToastAndroid.SHORT);
-        console.error(error);
-      }
+    const loadUser = async () => {
+      const stored = await AsyncStorage.getItem("userData");
+      if (stored) setUserData(JSON.parse(stored));
     };
-    initialize();
+    loadUser();
 
     Accelerometer.setUpdateInterval(100);
-    const sub = Accelerometer.addListener(({ x, y, z }) => {
-      const magnitude = Math.sqrt(x * x + y * y + z * z);
 
-      // Lắc đủ mạnh
-      if (magnitude > 1.7) {
+    const subscription = Accelerometer.addListener(({ x, y, z }) => {
+      const magnitude = Math.sqrt(x * x + y * y + z * z);
+      const now = Date.now();
+
+      if (magnitude > SHAKE_THRESHOLD) {
         if (!shaking) {
           setShaking(true);
-          shakeStart.current = Date.now();
+          shakeStartTime.current = now;
           startChestAnimation();
         } else if (
-          shakeStart.current &&
-          Date.now() - shakeStart.current > 5000
+          shakeStartTime.current &&
+          now - shakeStartTime.current >= MIN_SHAKE_DURATION
         ) {
-          handleReward();
-          shakeStart.current = null; // reset để không gọi lại nhiều lần
+          setShaking(false);
+          shakeStartTime.current = null;
+          stopChestAnimation();
+          handleShakeReward();
         }
+      } else {
+        setShaking(false);
+        shakeStartTime.current = null;
+        stopChestAnimation();
       }
-
-      // ❌ Không reset shakeStart khi lắc yếu, giữ lại để tính tổng thời gian
     });
 
-    setSubscription(sub);
+    return () => subscription && subscription.remove();
+  }, []);
 
-    return () => {
-      sub && sub.remove();
-      setSubscription(null);
-    };
-  }, [shaking]);
-
-  const handleReward = async () => {
+  const handleShakeReward = async () => {
     if (!userData) {
       ToastAndroid.show(
         "Vui lòng đăng nhập để nhận thưởng.",
         ToastAndroid.SHORT
       );
-      setShaking(false);
-      shakeStart.current = null;
-      stopChestAnimation();
       router.push("/sign-in");
       return;
     }
-
+    setLoadingReward(true);
+    Vibration.vibrate(300);
     try {
-      const response = await api.put("/user-primary", {
+      const res = await api.put("/user-primary", {
         id: userData.id,
         coin: COIN_REWARD,
         sku: SKU,
       });
-
-      if (!response.data.error) {
-        const updatedUserData = {
-          ...userData,
-          coin: userData.coin + COIN_REWARD,
-        };
-        setUserData(updatedUserData);
-        await AsyncStorage.setItem("userData", JSON.stringify(updatedUserData));
-
+      if (!res.data.error) {
+        const updated = { ...userData, coin: userData.coin + COIN_REWARD };
+        setUserData(updated);
+        await AsyncStorage.setItem("userData", JSON.stringify(updated));
         ToastAndroid.show(
-          `Bạn đã nhận được ${COIN_REWARD} xu!`,
-          ToastAndroid.LONG
+          `Bạn nhận được ${COIN_REWARD} xu 🎉`,
+          ToastAndroid.SHORT
         );
-      } else {
-        ToastAndroid.show("Lỗi khi nhận thưởng.", ToastAndroid.SHORT);
       }
-    } catch (error) {
-      ToastAndroid.show("Lỗi kết nối. Vui lòng thử lại.", ToastAndroid.SHORT);
-      console.error(error);
+    } catch (err) {
+      console.error(err);
     } finally {
-      setShaking(false);
-      shakeStart.current = null;
-      stopChestAnimation();
+      setLoadingReward(false);
       Linking.openURL(link_gift);
     }
   };
@@ -154,7 +140,7 @@ export default function GiftScreen() {
         />
       </View>
       <Text style={styles.instruction}>
-        Lắc điện thoại của bạn để nhận quà và ưu đãi
+        Lắc điện thoại để mở rương nhận quà 🎁
       </Text>
     </View>
   );
