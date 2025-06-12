@@ -149,7 +149,7 @@ export default function GiftScreen() {
     <View style={styles.container}>
       <View style={styles.chestContainer}>
         <Animated.Image
-          source={require("../assets/images/img-ruong.png")}
+          source={require("../assets/images/ic_treasure.png")}
           style={[styles.chest, { transform: [{ rotate }] }]}
         />
       </View>

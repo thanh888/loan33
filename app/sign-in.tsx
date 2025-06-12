@@ -12,7 +12,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import Toast from "toastify-react-native"; // Import toastify-react-native
 
 const SignInScreen = () => {
   const [username, setUsername] = useState("");
@@ -51,7 +50,6 @@ const SignInScreen = () => {
 
   return (
     <View style={viewStyles.container}>
-      <Toast />
       <Text style={textStyles.title}>Đăng nhập</Text>
       <Text style={textStyles.subtitle}>Đăng nhập để kiếm tiền!</Text>
       <TextInput

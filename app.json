@@ -2,7 +2,7 @@
   "expo": {
     "name": "loan33",
     "slug": "loan33",
-    "version": "1.0.0",
+    "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/images/logo.png",
     "scheme": "loan33",
@@ -12,6 +12,7 @@
       "supportsTablet": true
     },
     "android": {
+      "versionCode": 3,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/logo.png",
         "backgroundColor": "#ffffff"
@@ -24,11 +25,27 @@
       "output": "static",
       "favicon": "./assets/images/logo.png"
     },
-    "plugins": [
-      "expo-router"
-    ],
+    "plugins": ["expo-router"],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "c00dd4ff-3822-4c54-a675-fb59ab8531c9"
+      }
+    },
+    "build": {
+      "production": {
+        "android": {
+          "buildType": "app-bundle"
+        }
+      },
+      "apk": {
+        "android": {
+          "buildType": "apk"
+        }
+      }
     }
   }
 }

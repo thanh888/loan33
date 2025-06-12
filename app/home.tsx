@@ -96,7 +96,7 @@ export default function HomeScreen() {
       return;
     }
 
-    if (!userData) {
+    if (item.requiresAuth && !userData) {
       ToastAndroid.show("Vui lòng đăng nhập.", ToastAndroid.SHORT);
       router.push("/sign-in");
       return;
