@@ -106,6 +106,10 @@ export default function EarnMoneyScreen() {
     try {
       // Update coins via API
       const coinToAdd = coinsEachDay[firstUncheck];
+      ToastAndroid.show(
+        `Đang điểm danh ngày ${coinToAdd}...`,
+        ToastAndroid.SHORT
+      );
       const response = await api.put("/user-primary", {
         id: userData.id,
         coin: coinToAdd,
@@ -113,13 +117,10 @@ export default function EarnMoneyScreen() {
       });
 
       if (!response.data.error) {
-        // Update local user data
-        const updatedUserData = {
-          ...userData,
-          coin: userData.coin + coinToAdd,
-        };
-        setUserData(updatedUserData);
-        await AsyncStorage.setItem("userData", JSON.stringify(updatedUserData));
+        Object.assign(userData, { coin: userData.coin + coinToAdd });
+        console.log("Updated user data:", userData);
+
+        await AsyncStorage.setItem("userData", JSON.stringify(userData));
 
         // Update checkin status
         const newChecked = [...checked];

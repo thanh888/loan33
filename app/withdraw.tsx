@@ -1,7 +1,8 @@
 import { link_withdraw, SKU } from "@/constants/key-constants";
 import api from "@/services/axios.custom";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import React, { useEffect, useState } from "react";
+import { useFocusEffect } from "expo-router";
+import React, { useCallback, useState } from "react";
 import {
   Linking,
   StyleSheet,
@@ -20,28 +21,31 @@ export default function WithdrawScreen() {
   const [isLoading, setIsLoading] = useState(false);
 
   // Load user data from AsyncStorage
-  useEffect(() => {
-    const loadUserData = async () => {
-      try {
-        const storedData = await AsyncStorage.getItem("userData");
-        if (storedData) {
-          setUserData(JSON.parse(storedData));
-        } else {
+  useFocusEffect(
+    useCallback(() => {
+      const loadUserData = async () => {
+        try {
+          const storedData = await AsyncStorage.getItem("userData");
+          if (storedData) {
+            setUserData(JSON.parse(storedData));
+          } else {
+            ToastAndroid.show(
+              "Vui lòng đăng nhập để rút tiền.",
+              ToastAndroid.SHORT
+            );
+          }
+        } catch (error) {
           ToastAndroid.show(
-            "Vui lòng đăng nhập để rút tiền.",
+            "Lỗi khi tải dữ liệu người dùng.",
             ToastAndroid.SHORT
           );
+          console.error(error);
         }
-      } catch (error) {
-        ToastAndroid.show(
-          "Lỗi khi tải dữ liệu người dùng.",
-          ToastAndroid.SHORT
-        );
-        console.error(error);
-      }
-    };
-    loadUserData();
-  }, []);
+      };
+
+      loadUserData();
+    }, [])
+  );
 
   const handleWithdraw = async () => {
     if (!userData) {

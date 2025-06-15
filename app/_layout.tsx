@@ -31,7 +31,7 @@ export default function RootLayout() {
             options={{ title: "Thông tin cá nhân" }}
           />
           <Stack.Screen name="earn-money" options={{ title: "Kiếm tiền" }} />
-          <Stack.Screen name="gift" options={{ title: "Lác xu nhận thưởng" }} />
+          <Stack.Screen name="gift" options={{ title: "Lắc xu nhận thưởng" }} />
           <Stack.Screen name="loan" options={{ title: "Nhận khoản vay" }} />
           <Stack.Screen name="withdraw" options={{ title: "Rút tiền" }} />
           <Stack.Screen name="sign-in" options={{ headerShown: false }} />

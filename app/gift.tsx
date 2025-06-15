@@ -1,64 +1,60 @@
 import { link_gift, SKU } from "@/constants/key-constants";
 import api from "@/services/axios.custom";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { router } from "expo-router";
 import { Accelerometer } from "expo-sensors";
 import React, { useEffect, useRef, useState } from "react";
 import {
   Animated,
   Linking,
+  Modal,
   StyleSheet,
   Text,
-  ToastAndroid,
-  Vibration,
+  TouchableOpacity,
   View,
 } from "react-native";
 
 const COIN_REWARD = 300;
-const SHAKE_THRESHOLD = 1.7;
-const MIN_SHAKE_DURATION = 3000; // lắc ít nhất 3s
-const MIN_TIME_BETWEEN_REWARDS = 10000; // cách nhau 10s
+// Giảm ngưỡng cảm biến xuống để dễ nhận biết hơn
+const SHAKE_THRESHOLD = 1.3; // Giảm xuống từ 1.7
+const MIN_SHAKE_DURATION = 1000; // Giảm xuống chỉ còn 1s
 
 export default function GiftScreen() {
-  const [shaking, setShaking] = useState(false);
-  const [userData, setUserData] = useState<any>(null);
-  const [loadingReward, setLoadingReward] = useState(false);
+  const [showRewardDialog, setShowRewardDialog] = useState(false);
   const rotateAnim = useRef(new Animated.Value(0)).current;
 
-  const shakeStartTime = useRef<number | null>(null);
-  const lastRewardTime = useRef<number>(0);
-
   useEffect(() => {
-    const loadUser = async () => {
-      const stored = await AsyncStorage.getItem("userData");
-      if (stored) setUserData(JSON.parse(stored));
-    };
-    loadUser();
-
     Accelerometer.setUpdateInterval(100);
 
-    const subscription = Accelerometer.addListener(({ x, y, z }) => {
-      const magnitude = Math.sqrt(x * x + y * y + z * z);
-      const now = Date.now();
+    let shakeStartTime: number | null = null;
+    let shaking = false;
 
+    const subscription = Accelerometer.addListener(({ x, y, z }) => {
+      const now = Date.now();
+      const magnitude = Math.sqrt(x * x + y * y + z * z);
+
+      // Giảm ngưỡng phát hiện lắc để dễ kích hoạt hơn
       if (magnitude > SHAKE_THRESHOLD) {
         if (!shaking) {
-          setShaking(true);
-          shakeStartTime.current = now;
+          shaking = true;
+          shakeStartTime = now;
           startChestAnimation();
+          // Thêm phản hồi bằng toast để người dùng biết đã bắt đầu lắc
         } else if (
-          shakeStartTime.current &&
-          now - shakeStartTime.current >= MIN_SHAKE_DURATION
+          shakeStartTime &&
+          now - shakeStartTime >= MIN_SHAKE_DURATION
         ) {
-          setShaking(false);
-          shakeStartTime.current = null;
+          shaking = false;
+          shakeStartTime = null;
           stopChestAnimation();
-          handleShakeReward();
+          handleShakeReward(); // 🎁 gọi nhận thưởng
         }
       } else {
-        setShaking(false);
-        shakeStartTime.current = null;
-        stopChestAnimation();
+        // Cho phép lắc không liên tục, tăng thời gian reset lên 800ms
+        if (shaking && shakeStartTime && now - shakeStartTime > 800) {
+          shaking = false;
+          shakeStartTime = null;
+          stopChestAnimation();
+        }
       }
     });
 
@@ -66,37 +62,32 @@ export default function GiftScreen() {
   }, []);
 
   const handleShakeReward = async () => {
-    if (!userData) {
-      ToastAndroid.show(
-        "Vui lòng đăng nhập để nhận thưởng.",
-        ToastAndroid.SHORT
-      );
-      router.push("/sign-in");
-      return;
-    }
-    setLoadingReward(true);
-    Vibration.vibrate(300);
+    const stored = await AsyncStorage.getItem("userData");
+    const parsedUser = stored ? JSON.parse(stored) : null;
+
     try {
       const res = await api.put("/user-primary", {
-        id: userData.id,
-        coin: COIN_REWARD,
+        id: parsedUser.id,
+        coin: 300,
         sku: SKU,
       });
+      console.log("res", res.data);
+
       if (!res.data.error) {
-        const updated = { ...userData, coin: userData.coin + COIN_REWARD };
-        setUserData(updated);
-        await AsyncStorage.setItem("userData", JSON.stringify(updated));
-        ToastAndroid.show(
-          `Bạn nhận được ${COIN_REWARD} xu 🎉`,
-          ToastAndroid.SHORT
-        );
+        Object.assign(parsedUser, { coin: parsedUser.coin + 300 });
+        await AsyncStorage.setItem("userData", JSON.stringify(parsedUser));
+
+        // Hiển thị dialog thay vì mở link ngay
+        setShowRewardDialog(true);
       }
     } catch (err) {
       console.error(err);
-    } finally {
-      setLoadingReward(false);
-      Linking.openURL(link_gift);
     }
+  };
+
+  const handleClaimReward = () => {
+    setShowRewardDialog(false);
+    Linking.openURL(link_gift); // Chỉ mở link khi bấm nút Nhận Ngay
   };
 
   const startChestAnimation = () => {
@@ -142,6 +133,29 @@ export default function GiftScreen() {
       <Text style={styles.instruction}>
         Lắc điện thoại để mở rương nhận quà 🎁
       </Text>
+
+      {/* Dialog Thông báo nhận thưởng */}
+      <Modal
+        visible={showRewardDialog}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => {}}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>🎉 Xin chúc mừng! 🎉</Text>
+            <Text style={styles.modalMessage}>
+              Bạn đã nhận được {COIN_REWARD} xu và ưu đãi vay!
+            </Text>
+            <TouchableOpacity
+              style={styles.claimButton}
+              onPress={handleClaimReward}
+            >
+              <Text style={styles.claimButtonText}>NHẬN NGAY</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -157,5 +171,44 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginBottom: 25,
     paddingHorizontal: 12,
+  },
+  // Styles cho Modal Dialog
+  modalOverlay: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalContent: {
+    width: "80%",
+    backgroundColor: "#fff",
+    borderRadius: 10,
+    padding: 20,
+    alignItems: "center",
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: "bold",
+    marginBottom: 15,
+    color: "#000",
+    textAlign: "center",
+  },
+  modalMessage: {
+    fontSize: 16,
+    marginBottom: 20,
+    textAlign: "center",
+    color: "#444",
+    lineHeight: 22,
+  },
+  claimButton: {
+    backgroundColor: "#FFC107",
+    paddingVertical: 12,
+    paddingHorizontal: 30,
+    borderRadius: 25,
+    marginTop: 5,
+  },
+  claimButtonText: {
+    color: "#000",
+    fontWeight: "bold",
+    fontSize: 16,
   },
 });

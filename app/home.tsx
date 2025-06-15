@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { router } from "expo-router";
-import { useEffect, useState } from "react";
+import { router, useFocusEffect } from "expo-router";
+import { useCallback, useState } from "react";
 import {
   FlatList,
   Image,
@@ -13,10 +13,10 @@ import {
 
 const features = [
   {
-    key: "gift",
-    label: "Nhận quà",
-    icon: require("../assets/images/ic_gift.png"),
-    screen: "gift",
+    key: "loan",
+    label: "Nhận khoản vay",
+    icon: require("../assets/images/ic_loan.png"),
+    screen: "loan",
     requiresAuth: false, // Không yêu cầu đăng nhập
   },
   {
@@ -27,19 +27,21 @@ const features = [
     requiresAuth: true, // Yêu cầu đăng nhập
   },
   {
+    key: "gift",
+    label: "Nhận quà",
+    icon: require("../assets/images/ic_gift.png"),
+    screen: "gift",
+    requiresAuth: true, // Không yêu cầu đăng nhập
+  },
+
+  {
     key: "profile",
     label: "Thông tin cá nhân",
     icon: require("../assets/images/profile.png"),
     screen: "account",
     requiresAuth: true, // Yêu cầu đăng nhập
   },
-  {
-    key: "loan",
-    label: "Nhận khoản vay",
-    icon: require("../assets/images/ic_loan.png"),
-    screen: "loan",
-    requiresAuth: false, // Không yêu cầu đăng nhập
-  },
+
   {
     key: "withdraw",
     label: "Rút tiền",
@@ -66,26 +68,31 @@ const features = [
 export default function HomeScreen() {
   const [userData, setUserData] = useState(null);
 
-  // Kiểm tra trạng thái đăng nhập
-  useEffect(() => {
-    const checkUserData = async () => {
-      try {
-        const storedData = await AsyncStorage.getItem("userData");
-        if (storedData) {
-          setUserData(JSON.parse(storedData));
+  useFocusEffect(
+    useCallback(() => {
+      const checkUserData = async () => {
+        try {
+          const storedData = await AsyncStorage.getItem("userData");
+          if (storedData) {
+            setUserData(JSON.parse(storedData));
+          } else {
+            setUserData(null);
+          }
+        } catch (error) {
+          console.error(error);
         }
-      } catch (error) {
-        console.error(error);
-      }
-    };
-    checkUserData();
-  }, []);
+      };
+
+      checkUserData();
+    }, [])
+  );
 
   // Xử lý điều hướng và đăng xuất
   const handleNavigation = async (item) => {
     if (item.key === "logout") {
       try {
         await AsyncStorage.removeItem("userData");
+        // await AsyncStorage.clear();
         setUserData(null);
         ToastAndroid.show("Đăng xuất thành công.", ToastAndroid.SHORT);
         router.push("/sign-in");
